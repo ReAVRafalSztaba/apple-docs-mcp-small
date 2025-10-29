@@ -26,6 +26,8 @@
   },
   "scripts": {
     "build": "tsc && cp -r data dist/",
+    "prepare": "tsc && cp -r data dist/",
+    "postinstall": "npm run prepare",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "clean": "rm -rf dist",
