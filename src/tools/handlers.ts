@@ -8,30 +8,8 @@ import {
   listTechnologiesSchema,
   searchFrameworkSymbolsSchema,
   getRelatedApisSchema,
-  resolveReferencesBatchSchema,
   getPlatformCompatibilitySchema,
-  findSimilarApisSchema,
-  getDocumentationUpdatesSchema,
-  getTechnologyOverviewsSchema,
-  getSampleCodeSchema,
 } from '../schemas/index.js';
-import {
-  listWWDCVideosSchema,
-  searchWWDCContentSchema,
-  getWWDCVideoSchema,
-  getWWDCCodeExamplesSchema,
-  browseWWDCTopicsSchema,
-  findRelatedWWDCVideosSchema,
-} from '../schemas/wwdc.schemas.js';
-import {
-  handleListWWDCVideos,
-  handleSearchWWDCContent,
-  handleGetWWDCVideo,
-  handleGetWWDCCodeExamples,
-  handleBrowseWWDCTopics,
-  handleFindRelatedWWDCVideos,
-  handleListWWDCYears,
-} from './wwdc/wwdc-handlers.js';
 
 /**
  * Tool handler function type
@@ -42,86 +20,9 @@ export type ToolHandler = (
 ) => Promise<{ content: Array<{ type: string; text: string }>; isError?: boolean }>;
 
 /**
- * Map of tool names to their handlers
+ * Map of tool names to their handlers (trimmed to 6 tools)
  */
 export const toolHandlers: Record<string, ToolHandler> = {
-  get_performance_report: async () => {
-    const { httpClient } = await import('../utils/http-client.js');
-    const { getCacheWarmUpStatus } = await import('../utils/cache-warmer.js');
-    const { getPreloadStats } = await import('../utils/preloader.js');
-    const { globalRateLimiter } = await import('../utils/rate-limiter.js');
-
-    let report = '# Performance Report\n\n';
-
-    // HTTP Client Performance
-    report += httpClient.getPerformanceReport();
-    report += '\n\n';
-
-    // Cache Warm-up Status
-    const warmUpStatus = getCacheWarmUpStatus();
-    report += '## Cache Warm-up Status\n\n';
-    report += `- **Total Cache Entries:** ${warmUpStatus.totalCacheEntries}\n`;
-    report += `- **API Cache:** ${warmUpStatus.apiCacheSize} entries\n`;
-    report += `- **Technologies Cache:** ${warmUpStatus.technologiesCacheSize} entries\n`;
-    report += `- **Updates Cache:** ${warmUpStatus.updatesCacheSize} entries\n`;
-    report += `- **Overviews Cache:** ${warmUpStatus.overviewsCacheSize} entries\n\n`;
-
-    // Framework Preload Status
-    const preloadStats = getPreloadStats();
-    report += '## Framework Preload Status\n\n';
-    report += `- **Preloaded Frameworks:** ${preloadStats.preloadedFrameworks.join(', ')}\n`;
-    report += `- **Index Cache Hit Rate:** ${preloadStats.cacheHitRate}\n\n`;
-
-    // Rate Limiter Status
-    const rateLimiterStats = globalRateLimiter.getStats();
-    report += '## Rate Limiter Status\n\n';
-    report += `- **Current Requests:** ${rateLimiterStats.currentRequests}/${rateLimiterStats.maxRequests}\n`;
-    report += `- **Utilization:** ${rateLimiterStats.utilizationRate}\n`;
-    report += `- **Window:** ${rateLimiterStats.windowMs / 1000}s\n`;
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: report,
-        },
-      ],
-    };
-  },
-
-  get_cache_stats: async () => {
-    const { apiCache, searchCache, indexCache, technologiesCache, updatesCache, sampleCodeCache, technologyOverviewsCache } = await import('../utils/cache.js');
-
-    const stats = {
-      apiCache: apiCache.getStats(),
-      searchCache: searchCache.getStats(),
-      indexCache: indexCache.getStats(),
-      technologiesCache: technologiesCache.getStats(),
-      updatesCache: updatesCache.getStats(),
-      sampleCodeCache: sampleCodeCache.getStats(),
-      technologyOverviewsCache: technologyOverviewsCache.getStats(),
-    };
-
-    let report = '# Cache Statistics Report\n\n';
-
-    Object.entries(stats).forEach(([name, stat]) => {
-      report += `## ${name}\n`;
-      report += `- Size: ${stat.size}/${stat.maxSize}\n`;
-      report += `- Hit Rate: ${stat.hitRate}\n`;
-      report += `- Hits: ${stat.hits}\n`;
-      report += `- Misses: ${stat.misses}\n\n`;
-    });
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: report,
-        },
-      ],
-    };
-  },
-
   search_apple_docs: async (args, server) => {
     const validatedArgs = searchAppleDocsSchema.parse(args);
     return await server.searchAppleDocs(validatedArgs.query, validatedArgs.type);
@@ -169,15 +70,6 @@ export const toolHandlers: Record<string, ToolHandler> = {
     );
   },
 
-  resolve_references_batch: async (args, server) => {
-    const validatedArgs = resolveReferencesBatchSchema.parse(args);
-    return await server.resolveReferencesBatch(
-      validatedArgs.sourceUrl,
-      validatedArgs.maxReferences,
-      validatedArgs.filterByType,
-    );
-  },
-
   get_platform_compatibility: async (args, server) => {
     const validatedArgs = getPlatformCompatibilitySchema.parse(args);
     return await server.getPlatformCompatibility(
@@ -185,125 +77,6 @@ export const toolHandlers: Record<string, ToolHandler> = {
       validatedArgs.compareMode,
       validatedArgs.includeRelated,
     );
-  },
-
-  find_similar_apis: async (args, server) => {
-    const validatedArgs = findSimilarApisSchema.parse(args);
-    return await server.findSimilarApis(
-      validatedArgs.apiUrl,
-      validatedArgs.searchDepth,
-      validatedArgs.filterByCategory,
-      validatedArgs.includeAlternatives,
-    );
-  },
-
-  get_documentation_updates: async (args, server) => {
-    const validatedArgs = getDocumentationUpdatesSchema.parse(args);
-    return await server.getDocumentationUpdates(
-      validatedArgs.category,
-      validatedArgs.technology,
-      validatedArgs.year,
-      validatedArgs.searchQuery,
-      validatedArgs.includeBeta,
-      validatedArgs.limit,
-    );
-  },
-
-  get_technology_overviews: async (args, server) => {
-    const validatedArgs = getTechnologyOverviewsSchema.parse(args);
-    return await server.getTechnologyOverviews(
-      validatedArgs.category,
-      validatedArgs.platform,
-      validatedArgs.searchQuery,
-      validatedArgs.includeSubcategories,
-      validatedArgs.limit,
-    );
-  },
-
-  get_sample_code: async (args, server) => {
-    const validatedArgs = getSampleCodeSchema.parse(args);
-    return await server.getSampleCode(
-      validatedArgs.framework,
-      validatedArgs.beta,
-      validatedArgs.searchQuery,
-      validatedArgs.limit,
-    );
-  },
-
-  // WWDC tools
-  list_wwdc_videos: async (args, _server) => {
-    const validatedArgs = listWWDCVideosSchema.parse(args);
-    const result = await handleListWWDCVideos(
-      validatedArgs.year,
-      validatedArgs.topic,
-      validatedArgs.hasCode,
-      validatedArgs.limit,
-    );
-    return { content: [{ type: 'text', text: result }] };
-  },
-
-  search_wwdc_content: async (args, _server) => {
-    const validatedArgs = searchWWDCContentSchema.parse(args);
-    const result = await handleSearchWWDCContent(
-      validatedArgs.query,
-      validatedArgs.searchIn,
-      validatedArgs.year,
-      validatedArgs.language,
-      validatedArgs.limit,
-    );
-    return { content: [{ type: 'text', text: result }] };
-  },
-
-  get_wwdc_video: async (args, _server) => {
-    const validatedArgs = getWWDCVideoSchema.parse(args);
-    const result = await handleGetWWDCVideo(
-      validatedArgs.year,
-      validatedArgs.videoId,
-      validatedArgs.includeTranscript,
-      validatedArgs.includeCode,
-    );
-    return { content: [{ type: 'text', text: result }] };
-  },
-
-  get_wwdc_code_examples: async (args, _server) => {
-    const validatedArgs = getWWDCCodeExamplesSchema.parse(args);
-    const result = await handleGetWWDCCodeExamples(
-      validatedArgs.framework,
-      validatedArgs.topic,
-      validatedArgs.year,
-      validatedArgs.language,
-      validatedArgs.limit,
-    );
-    return { content: [{ type: 'text', text: result }] };
-  },
-
-  browse_wwdc_topics: async (args, _server) => {
-    const validatedArgs = browseWWDCTopicsSchema.parse(args);
-    const result = await handleBrowseWWDCTopics(
-      validatedArgs.topicId,
-      validatedArgs.includeVideos,
-      validatedArgs.year,
-      validatedArgs.limit,
-    );
-    return { content: [{ type: 'text', text: result }] };
-  },
-
-  find_related_wwdc_videos: async (args, _server) => {
-    const validatedArgs = findRelatedWWDCVideosSchema.parse(args);
-    const result = await handleFindRelatedWWDCVideos(
-      validatedArgs.videoId,
-      validatedArgs.year,
-      validatedArgs.includeExplicitRelated,
-      validatedArgs.includeTopicRelated,
-      validatedArgs.includeYearRelated,
-      validatedArgs.limit,
-    );
-    return { content: [{ type: 'text', text: result }] };
-  },
-
-  list_wwdc_years: async (_args, _server) => {
-    const result = await handleListWWDCYears();
-    return { content: [{ type: 'text', text: result }] };
   },
 };
 
@@ -323,7 +96,6 @@ export async function handleToolCall(
 
     return await handler(args, server) as { content: Array<{ type: string; text: string }>; isError?: boolean };
   } catch (error) {
-    // Return error response for validation errors and unknown tools
     return {
       content: [{
         type: 'text',
